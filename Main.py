@@ -1,13 +1,18 @@
-import json
 import re
 import numpy as np
 import pickle
+import sys
+from io import StringIO
 
 from nltk.corpus import stopwords
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import learning_curve
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -149,23 +154,72 @@ def lstm():
     callbacks = [checkpoint, early_stopping]
 
     model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
-    model.load_weights('lstm_weights.hdf5')
-    model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_test, y_test), callbacks=callbacks, initial_epoch=5)
+    # model.load_weights('lstm_weights.hdf5')
+    model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_test, y_test), callbacks=callbacks)
+    return model
 
 
 def logistic_regression():
+    # old_stdout = sys.stdout
+    # sys.stdout = mystdout = StringIO()
+
     lr_model = LogisticRegression(n_jobs=-1, max_iter=150)
-    lr_model.fit(x_train, y_train)
+    train_sizes, train_scores, valid_scores = learning_curve(lr_model, x_train, y_train)
+    print(train_scores)
+    # lr_model.fit(x_train, y_train)
+
+    # sys.stdout = old_stdout
+    # loss_history = mystdout.getvalue()
+    # loss_list = []
+    # for line in loss_history.split('\n'):
+    #     if len(line.split("loss: ")) == 1:
+    #         continue
+    #     loss_list.append(float(line.split("loss: ")[-1]))
+    # plt.figure()
+    # plt.plot(np.arange(len(loss_list)), loss_list)
+    # plt.savefig("results/logRes_history.png")
+    # plt.xlabel("Time in epochs")
+    # plt.ylabel("Loss")
+    # plt.close()
 
     pred_lr = lr_model.predict(x_test)
     print('Accuracy:', accuracy_score(y_test, pred_lr))
 
-    pickle.dump(lr_model, open('model.pkl', 'wb'))
+    pickle.dump(lr_model, open('logistic_model.pkl', 'wb'))
     pickle.dump(count_vect, open('countvect.pkl', 'wb'))
+
+
+def save_results(model_history, save_dir):
+    # save progress and charts
+    print('Saving results')
+    epoch = model_history.epoch
+    accuracy = model_history.history['accuracy']
+    val_accuracy = model_history.history['val_accuracy']
+    loss = model_history.history['loss']
+    val_loss = model_history.history['val_loss']
+
+    sns.set()
+    fig = plt.figure(0, (12, 4))
+
+    ax = plt.subplot(1, 2, 1)
+    sns.lineplot(x=epoch, y=accuracy, label='train')
+    sns.lineplot(x=epoch, y=val_accuracy, label='valid')
+    plt.title('Accuracy')
+    plt.tight_layout()
+
+    ax = plt.subplot(1, 2, 2)
+    sns.lineplot(x=epoch, y=loss, label='train')
+    sns.lineplot(x=epoch, y=val_loss, label='valid')
+    plt.title('Loss')
+    plt.tight_layout()
+
+    plt.savefig(save_dir + '/epoch_history.png')
+    plt.close(fig)
 
 
 if __name__ == '__main__':
     if algo == 'logistic':
         logistic_regression()
     else:
-        lstm()
+        lstm_model = lstm()
+        save_results(lstm_model.history, 'results')

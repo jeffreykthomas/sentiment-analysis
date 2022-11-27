@@ -24,10 +24,11 @@ Review For Sentiment Analysis](https://www.kaggle.com/datasets/bittlingmayer/ama
 ---
 ## Early Results
 
-* Visuals to come...
 * LSTM - 95.6% accuracy on validation set
-* Logistic Regression - 90% accuracy on validation set
+  ![epoch history](results/epoch_history.png)
 
+* Logistic Regression - 90% accuracy on validation set
+![Logistic Regression Curves](results/logRes_history.png)
 ---
 [//]: # (## Basic Training)
 
