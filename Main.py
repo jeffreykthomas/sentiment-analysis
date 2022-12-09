@@ -1,22 +1,19 @@
 import re
 import numpy as np
 import pickle
-import sys
-from io import StringIO
 
 from nltk.corpus import stopwords
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import learning_curve
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 from tensorflow import keras
 from tensorflow.keras import layers
-from keras.preprocessing import text, sequence
+from keras.preprocessing import text
 from keras.utils import pad_sequences
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -30,10 +27,13 @@ algo = ap.parse_args().algo
 train_file = 'data/train.ft.txt'
 test_file = 'data/test.ft.txt'
 
-with open(train_file) as file:
-    train_file_lines = [line.rstrip() for line in file]
-with open(test_file) as file:
-    test_file_lines = [line.rstrip() for line in file]
+
+def prepare_dataset():
+    with open(train_file) as file:
+        train_file_lines = [line.rstrip() for line in file]
+    with open(test_file) as file:
+        test_file_lines = [line.rstrip() for line in file]
+    return train_file_lines, test_file_lines
 
 
 def clean_data(data_file):
@@ -49,8 +49,7 @@ def clean_data(data_file):
         if 'www.' in sentences[i] or 'http:' in sentences[i] or 'https:' in sentences[i] or '.com' in \
                 sentences[i]:
             sentences[i] = re.sub(r"([^ ]+(?<=\.[a-z]{3}))", "<url>", sentences[i])
-        # if algo == 'logistic':
-        #     sentences[i] = [word for word in sentences[i] if not word in stopwords.words('english')]
+
         if i % data_length == 0:
             print('--' + str(int(i / data_length) * 10) + '%', end='')
 
@@ -104,23 +103,9 @@ def tokenize(train_sentences, test_sentences):
     return tokenized_train_sentences, tokenized_test_sentences
 
 
-if algo == 'logistic':
-    print('Processing Training data')
-    y_train, train_texts = clean_texts(train_file_lines)
-    print('\nProcessing Test data')
-    y_test, test_texts = clean_texts(test_file_lines)
+def lstm():
+    train_file_lines, test_file_lines = prepare_dataset()
 
-    print('Fitting data...')
-    count_vect = CountVectorizer()
-    count_vect.fit(train_texts)
-    print('fit complete !')
-
-    print('Transforming training set...')
-    x_train = count_vect.transform(train_texts)
-
-    print('Transforming test set...')
-    x_test = count_vect.transform(test_texts)
-else:
     print('Processing Training data')
     y_train, train_sentences = clean_data(train_file_lines)
     print('\nProcessing Test data')
@@ -128,8 +113,6 @@ else:
     print('Fitting data...')
     x_train, x_test = tokenize(train_sentences, test_sentences)
 
-
-def lstm():
     max_features = 20000  # Only consider the top 20k words
     maxlen = 200  # Only consider the first 200 words of each review
 
@@ -154,33 +137,30 @@ def lstm():
     callbacks = [checkpoint, early_stopping]
 
     model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
-    # model.load_weights('lstm_weights.hdf5')
     model.fit(x_train, y_train, batch_size=32, epochs=10, validation_data=(x_test, y_test), callbacks=callbacks)
     return model
 
 
 def logistic_regression():
-    # old_stdout = sys.stdout
-    # sys.stdout = mystdout = StringIO()
+    train_file_lines, test_file_lines = prepare_dataset()
+    print('Processing Training data')
+    y_train, train_texts = clean_texts(train_file_lines)
+    print('\nProcessing Test data')
+    y_test, test_texts = clean_texts(test_file_lines)
+
+    print('Fitting data...')
+    count_vect = CountVectorizer()
+    count_vect.fit(train_texts)
+    print('fit complete !')
+
+    print('Transforming training set...')
+    x_train = count_vect.transform(train_texts)
+
+    print('Transforming test set...')
+    x_test = count_vect.transform(test_texts)
 
     lr_model = LogisticRegression(n_jobs=-1, max_iter=150)
-    train_sizes, train_scores, valid_scores = learning_curve(lr_model, x_train, y_train)
-    print(train_scores)
-    # lr_model.fit(x_train, y_train)
-
-    # sys.stdout = old_stdout
-    # loss_history = mystdout.getvalue()
-    # loss_list = []
-    # for line in loss_history.split('\n'):
-    #     if len(line.split("loss: ")) == 1:
-    #         continue
-    #     loss_list.append(float(line.split("loss: ")[-1]))
-    # plt.figure()
-    # plt.plot(np.arange(len(loss_list)), loss_list)
-    # plt.savefig("results/logRes_history.png")
-    # plt.xlabel("Time in epochs")
-    # plt.ylabel("Loss")
-    # plt.close()
+    lr_model.fit(x_train, y_train)
 
     pred_lr = lr_model.predict(x_test)
     print('Accuracy:', accuracy_score(y_test, pred_lr))
