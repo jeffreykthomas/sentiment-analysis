@@ -25,7 +25,7 @@ Review For Sentiment Analysis](https://www.kaggle.com/datasets/bittlingmayer/ama
 ## Results
 
 * LSTM - 95.6% accuracy on validation set
-  ![epoch history](results/epoch_history.png)
+  ![epoch history](results/lstm_epoch_history.png)
 
 
 
@@ -41,6 +41,8 @@ Review For Sentiment Analysis](https://www.kaggle.com/datasets/bittlingmayer/ama
 ## Paper discussing results
 * [Sentiment Analysis on Amazon Reviews](https://docs.google.com/document/d/1dXUQishbi1LZOsuqpGc-Jp2hXqyAZFVr7caLf_EWVrE/edit?usp=sharing)
 
+## Model Deployment
+* [www.emotiondetection.app/sentiment](https://emotiondetection.app/sentiment)
 
 ## References
 * [Chollet, F. - Bidirectional LSTM on IMDB](https://keras.io/examples/nlp/bidirectional_lstm_imdb/)

@@ -11,10 +11,10 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from keras.preprocessing import text
-from keras.utils import pad_sequences
+from tensorflow.keras.layers import TextVectorization
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 import argparse
@@ -81,24 +81,22 @@ def clean_texts(texts):
     return labels, temp_texts
 
 
+def custom_standardization(input_data):
+    lowercase = tf.strings.lower(input_data)
+    stripped_html = tf.strings.regex_replace(lowercase, "<br />", " ")
+    return tf.strings.regex_replace(
+        stripped_html, "[%s]" % re.escape("!#$%&'()*+,-./:;<=>?@\^_`{|}~"), ""
+    )
+
+
 def tokenize(train_sentences, test_sentences):
-    max_features = 20000  # Only consider the top 20k words
-    maxlen = 200  # Only consider the first 200 words of each review
+    # Load text vectorization layer trained with BERT.py
+    from_disk = pickle.load(open('tv_layer.pkl', 'rb'))
+    text_vectorization = TextVectorization.from_config(from_disk['config'])
+    text_vectorization.set_weights(from_disk['weights'])
 
-    tokenizer = text.Tokenizer(num_words=max_features)
-    tokenizer.fit_on_texts(train_sentences)
-
-    print('Transforming train data...')
-    tokenized_train_sentences = tokenizer.texts_to_sequences(train_sentences)
-    tokenized_train_sentences = pad_sequences(tokenized_train_sentences, maxlen=maxlen)
-
-    print('Transforming test data...')
-    tokenized_test_sentences = tokenizer.texts_to_sequences(test_sentences)
-    tokenized_test_sentences = pad_sequences(tokenized_test_sentences, maxlen=maxlen)
-    print('Done transforming data...')
-
-    with open('tokenizer.pkl', 'wb') as handle:
-        pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    tokenized_train_sentences = text_vectorization(train_sentences).numpy()
+    tokenized_test_sentences = text_vectorization(test_sentences).numpy()
 
     return tokenized_train_sentences, tokenized_test_sentences
 
@@ -114,7 +112,6 @@ def lstm():
     x_train, x_test = tokenize(train_sentences, test_sentences)
 
     max_features = 20000  # Only consider the top 20k words
-    maxlen = 200  # Only consider the first 200 words of each review
 
     # Input for variable-length sequences of integers
     inputs = keras.Input(shape=(None,), dtype="int32")
@@ -131,7 +128,7 @@ def lstm():
     print(len(x_train), "Training sequences")
     print(len(x_test), "Validation sequences")
 
-    weight_path = "lstm_weights.hdf5"
+    weight_path = "lstm_weights_2.hdf5"
     checkpoint = ModelCheckpoint(weight_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
     early_stopping = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     callbacks = [checkpoint, early_stopping]

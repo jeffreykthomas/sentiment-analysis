@@ -2,7 +2,6 @@ import gradio as gr
 import tensorflow as tf
 import re
 from tensorflow import keras
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.layers import TextVectorization
 import pickle
 import os
@@ -19,8 +18,6 @@ def custom_standardization(input_data):
 
 
 count_vect = pickle.load(open('countvect.pkl', 'rb'))
-tokenizer = pickle.load(open('tokenizer.pkl', 'rb'))
-
 from_disk = pickle.load(open('tv_layer.pkl', 'rb'))
 text_vectorization = TextVectorization.from_config(from_disk['config'])
 text_vectorization.set_weights(from_disk['weights'])
@@ -30,7 +27,7 @@ lstm_model = keras.models.load_model('lstm_model.h5')
 bert_classifier_model = keras.models.load_model('bert_classifier.h5')
 
 
-def get_bert_end_to_end(model):
+def get_end_to_end(model):
     inputs_string = keras.Input(shape=(1,), dtype="string")
     indices = text_vectorization(inputs_string)
     outputs = model(indices)
@@ -42,7 +39,8 @@ def get_bert_end_to_end(model):
     return end_to_end_model
 
 
-bert_end_model = get_bert_end_to_end(bert_classifier_model)
+bert_end_model = get_end_to_end(bert_classifier_model)
+lstm_end_model = get_end_to_end(lstm_model)
 
 
 def get_lr_results(text):
@@ -51,9 +49,7 @@ def get_lr_results(text):
 
 
 def get_lstm_results(text):
-    tokenized_text = tokenizer.texts_to_sequences([text])
-    padded_tokens = pad_sequences(tokenized_text, maxlen=200)
-    return lstm_model.predict(padded_tokens)[0][0]
+    return lstm_end_model.predict([text])[0][0]
 
 
 def get_bert_results(text):
